@@ -1,5 +1,5 @@
 -- LuAI Loader
-local Repo = "https://raw.githubusercontent.com/TUO_USER/NOME_REPO/main/"
+local Repo = "https://raw.githubusercontent.com/VitoZonno/LuAI-Project/main/"
 
 local function GetFile(name)
     local success, content = pcall(function()
