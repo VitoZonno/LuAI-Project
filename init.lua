@@ -5,46 +5,30 @@
 ██║     ██║   ██║██╔══██║██║
 ███████╗╚██████╔╝██║  ██║██║
 ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝
-
-                🚀 LuAI ASSISTANT — THE EXPLOIT COPILOT 🚀
+                🚀 LuAI ASSISTANT - LOADER 🚀
 ----------------------------------------------------------------------------
-  REPO: https://github.com/VitoZonno/LuAI-Project
-  STATUS: Beta v1.0
+  REPOSITORY: https://github.com/VitoZonno/LuAI-Project
 ----------------------------------------------------------------------------
 ]]
 
-if not game:IsLoaded() then 
-    game.Loaded:Wait() 
-end
+if not game:IsLoaded() then game.Loaded:Wait() end
 
--- [ CONFIGURAZIONE REPO ]
+-- [ CONFIGURAZIONE ]
 local RepoURL = "https://raw.githubusercontent.com/VitoZonno/LuAI-Project/main/"
-local CheatEngineMode = false
 
--- [ COMPATIBILITÀ EXECUTOR ]
-if (not getgenv) or (getgenv and type(getgenv) ~= "function") then
-	CheatEngineMode = true
-end
-
-if getgenv and not getgenv().shared then
-	getgenv().shared = {}
-end
-
-local function checkExecutor()
-    if identifyexecutor ~= nil then
-        local res = tostring(identifyexecutor()):lower()
-        local blacklist = {'solara', 'xeno', 'cryptic', 'ember'}
-        for _, v in pairs(blacklist) do
-            if string.find(res, v) then 
-                CheatEngineMode = true 
-            end
-        end
+-- Funzione per scaricare i file con bypass della cache
+local function GetFile(name)
+    local success, content = pcall(function()
+        -- Il parametro ?v= forza GitHub a darti l'ultima versione caricata
+        return game:HttpGet(RepoURL .. name .. ".lua?v=" .. tostring(math.random(1, 100000)), true)
+    end)
+    if success and content ~= "" and not string.find(content, "404: Not Found") then
+        return content
     end
+    return nil
 end
-pcall(checkExecutor)
-shared.CheatEngineMode = CheatEngineMode
 
--- [ FUNZIONI DI SUPPORTO ]
+-- [ NOTIFICHE ]
 local function notify(title, text)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -55,49 +39,47 @@ local function notify(title, text)
     end)
 end
 
-local function GetFile(file)
-    local success, content = pcall(function()
-        -- Aggiungiamo un parametro random per evitare la cache di GitHub
-        return game:HttpGet(RepoURL .. file .. ".lua?nocache=" .. tostring(math.random(1,100000)), true)
-    end)
-    if success and content and content ~= "" then
-        return content
-    end
-    return nil
-end
-
--- [ AVVIO DEL FRAMEWORK ]
+-- [ MAIN LOADER ]
 task.spawn(function()
-    print("[LuAI] Initializing from VitoZonno/LuAI-Project...")
+    print("[LuAI] Inizializzazione in corso...")
+    notify("LuAI Assistant", "Connessione ai server GitHub...")
+
+    -- 1. Caricamento UI
+    local UISource = GetFile("LuAIGenerator")
+    if not UISource then warn("[LuAI Error] Fallito scaricamento LuAIGenerator.lua") return end
+    local LuAIGenerator = loadstring(UISource)()
+    if type(LuAIGenerator) ~= "table" then 
+        warn("[LuAI Error] Il modulo UI non ha restituito una tabella! Metti 'return LuAIGenerator' alla fine del file.")
+        return 
+    end
+
+    -- 2. Caricamento Environment (Exploit Lib)
+    local EnvSource = GetFile("Environment")
+    if not EnvSource then warn("[LuAI Error] Fallito scaricamento Environment.lua") return end
+    local Environment = loadstring(EnvSource)()
+    if type(Environment) ~= "table" then Environment = {} end
+
+    -- 3. Caricamento Core (Logica)
+    local CoreSource = GetFile("Core")
+    if not CoreSource then warn("[LuAI Error] Fallito scaricamento Core.lua") return end
+    local Core = loadstring(CoreSource)()
+    if type(Core) ~= "table" then 
+        warn("[LuAI Error] Il modulo Core non ha restituito una tabella! Metti 'return Core' alla fine del file.")
+        return 
+    end
+
+    -- 4. Esecuzione Finale
+    print("[LuAI] Moduli verificati. Iniezione interfaccia...")
     
-    -- Notifica iniziale
-    notify("LuAI Loading", "Scaricamento moduli core in corso...")
-    
-    -- Scaricamento Moduli
-    local UI_Source = GetFile("LuAIGenerator")
-    local Env_Source = GetFile("Environment")
-    local Core_Source = GetFile("Core")
-    
-    -- Verifica integrità
-    if UI_Source and Env_Source and Core_Source then
-        -- Caricamento dinamico
-        local LuAIGenerator = loadstring(UI_Source)()
-        local Environment = loadstring(Env_Source)()
-        local Core = loadstring(Core_Source)()
-        
-        -- Controllo che i moduli ritornino correttamente le tabelle
-        if type(LuAIGenerator) == "table" and type(Core) == "table" then
-            task.wait(0.5)
-            Core.Init(LuAIGenerator, Environment)
-            
-            notify("LuAI Ready", "Benvenuto, " .. game.Players.LocalPlayer.Name .. "!")
-            print("[LuAI] Sistema caricato con successo.")
-        else
-            warn("[LuAI] Errore: Uno dei moduli non ha restituito una tabella. Controlla i 'return' nei file.")
-            notify("LuAI Error", "Errore strutturale nei file Lua.")
-        end
+    local success, err = pcall(function()
+        Core.Init(LuAIGenerator, Environment)
+    end)
+
+    if success then
+        notify("LuAI Injected", "Sistema pronto! Usa l'interfaccia a schermo.")
+        print("[LuAI] Iniezione completata con successo.")
     else
-        warn("[LuAI] Errore di connessione GitHub.")
-        notify("LuAI Error", "Impossibile scaricare i file. Controlla la tua connessione o il link della Repo.")
+        warn("[LuAI Error] Errore critico durante Core.Init: " .. tostring(err))
+        notify("LuAI Error", "Errore durante l'inizializzazione dei componenti.")
     end
 end)
