@@ -7,28 +7,26 @@
 ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝
                 🚀 LuAI ASSISTANT - LOADER 🚀
 ----------------------------------------------------------------------------
-  REPOSITORY: https://github.com/VitoZonno/LuAI-Project
-----------------------------------------------------------------------------
 ]]
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
--- [ CONFIGURAZIONE ]
+-- [ CONFIGURAZIONE REPO ]
 local RepoURL = "https://raw.githubusercontent.com/VitoZonno/LuAI-Project/main/"
 
--- Funzione per scaricare i file con bypass della cache
+-- Funzione di download sicura
 local function GetFile(name)
     local success, content = pcall(function()
-        -- Il parametro ?v= forza GitHub a darti l'ultima versione caricata
+        -- Il parametro ?v= forza l'aggiornamento (niente cache vecchia)
         return game:HttpGet(RepoURL .. name .. ".lua?v=" .. tostring(math.random(1, 100000)), true)
     end)
-    if success and content ~= "" and not string.find(content, "404: Not Found") then
+    if success and content ~= "" and not string.find(content, "404") then
         return content
     end
     return nil
 end
 
--- [ NOTIFICHE ]
+-- [ NOTIFICA ]
 local function notify(title, text)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -39,47 +37,45 @@ local function notify(title, text)
     end)
 end
 
--- [ MAIN LOADER ]
+-- [ LOGICA DI CARICAMENTO ]
 task.spawn(function()
-    print("[LuAI] Inizializzazione in corso...")
-    notify("LuAI Assistant", "Connessione ai server GitHub...")
-
-    -- 1. Caricamento UI
-    local UISource = GetFile("LuAIGenerator")
-    if not UISource then warn("[LuAI Error] Fallito scaricamento LuAIGenerator.lua") return end
-    local LuAIGenerator = loadstring(UISource)()
-    if type(LuAIGenerator) ~= "table" then 
-        warn("[LuAI Error] Il modulo UI non ha restituito una tabella! Metti 'return LuAIGenerator' alla fine del file.")
-        return 
-    end
-
-    -- 2. Caricamento Environment (Exploit Lib)
-    local EnvSource = GetFile("Environment")
-    if not EnvSource then warn("[LuAI Error] Fallito scaricamento Environment.lua") return end
-    local Environment = loadstring(EnvSource)()
-    if type(Environment) ~= "table" then Environment = {} end
-
-    -- 3. Caricamento Core (Logica)
-    local CoreSource = GetFile("Core")
-    if not CoreSource then warn("[LuAI Error] Fallito scaricamento Core.lua") return end
-    local Core = loadstring(CoreSource)()
-    if type(Core) ~= "table" then 
-        warn("[LuAI Error] Il modulo Core non ha restituito una tabella! Metti 'return Core' alla fine del file.")
-        return 
-    end
-
-    -- 4. Esecuzione Finale
-    print("[LuAI] Moduli verificati. Iniezione interfaccia...")
+    print("[LuAI] Connessione a GitHub: " .. RepoURL)
     
+    -- Scaricamento sorgenti
+    local UI_Src = GetFile("LuAIGenerator")
+    local Env_Src = GetFile("Environment")
+    local Core_Src = GetFile("Core")
+
+    -- Verifica se i file esistono
+    if not UI_Src then warn("[LuAI Error] File LuAIGenerator.lua mancante su GitHub!") return end
+    if not Env_Src then warn("[LuAI Error] File Environment.lua mancante su GitHub!") return end
+    if not Core_Src then warn("[LuAI Error] File Core.lua mancante su GitHub!") return end
+
+    -- Compilazione ed Esecuzione Moduli
+    local LuAIGenerator = loadstring(UI_Src)()
+    local Environment = loadstring(Env_Src)()
+    local Core = loadstring(Core_Src)()
+
+    -- CONTROLLO DEI RETURN (Se questi falliscono, hai dimenticato il "return" nel file)
+    if type(LuAIGenerator) ~= "table" then 
+        warn("[LuAI] ERRORE: LuAIGenerator non ritorna una tabella. Aggiungi 'return LuAIGenerator' a fine file.") 
+        return 
+    end
+    if type(Core) ~= "table" then 
+        warn("[LuAI] ERRORE: Core non ritorna una tabella. Aggiungi 'return Core' a fine file.") 
+        return 
+    end
+
+    -- AVVIO FINALE
     local success, err = pcall(function()
         Core.Init(LuAIGenerator, Environment)
     end)
 
     if success then
-        notify("LuAI Injected", "Sistema pronto! Usa l'interfaccia a schermo.")
-        print("[LuAI] Iniezione completata con successo.")
+        notify("LuAI Caricato", "Sistema iniettato con successo!")
+        print("[LuAI] Framework pronto.")
     else
-        warn("[LuAI Error] Errore critico durante Core.Init: " .. tostring(err))
-        notify("LuAI Error", "Errore durante l'inizializzazione dei componenti.")
+        warn("[LuAI Error] Fallimento durante Init: " .. tostring(err))
+        notify("LuAI Errore", "Controlla la console F9")
     end
 end)
